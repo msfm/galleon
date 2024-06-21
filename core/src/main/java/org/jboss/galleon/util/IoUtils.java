@@ -152,10 +152,26 @@ public class IoUtils {
     }
 
     public static void copy(Path source, Path target, boolean skipExistingFiles) throws IOException {
-        if(Files.isDirectory(source)) {
-            Files.createDirectories(target);
+        if (Files.isDirectory(source)) {
+            try {
+                Files.createDirectories(target);
+            } catch (FileAlreadyExistsException e) {
+                // FileAlreadyExistsException happen if the target path already exists and it's not directly (symbolic link or regular file)
+                // this exception can be ignored if it's symbolic link and if real path of the symbolic link is directory.
+                if (!Files.isDirectory(target)) {
+                    throw new IOException("Unable to copy file(s) from source path [" + source + "] to target path [" + target + "] because the target path is not directory (regular file or symbolic link where real path is not directory).", e);
+                }
+            }
         } else {
-            Files.createDirectories(target.getParent());
+            try {
+                Files.createDirectories(target.getParent());
+            } catch (FileAlreadyExistsException e) {
+                // FileAlreadyExistsException happen if the target path already exists and it's not directly (symbolic link or regular file)
+                // this exception can be ignored if it's symbolic link and if real path of the symbolic link is directory.
+                if (!Files.isDirectory(target.getParent())) {
+                    throw new IOException("Unable to copy file(s) from source path [" + source + "] to target path [" + target + "] because parent directory of the target path is not directory (regular file or symbolic link where real path is not directory).", e);
+                }
+            }
         }
         Files.walkFileTree(source, EnumSet.of(FileVisitOption.FOLLOW_LINKS), Integer.MAX_VALUE,
                 new SimpleFileVisitor<Path>() {
